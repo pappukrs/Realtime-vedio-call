@@ -1,0 +1,19 @@
+{
+  "name": "live-calling",
+  "version": "1.0.0",
+  "description": "WhatsApp-style video calling system built for scale, performance, and reliability.",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.8.3"
+  }
+}
