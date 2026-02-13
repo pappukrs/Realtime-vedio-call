@@ -1,6 +1,6 @@
 # 🎥 Real-Time Multi-Party Video Calling System
 
-A professional-grade, microservices-based video conferencing platform built with **Next.js**, **Mediasoup (SFU)**, and **Socket.io**. This project demonstrates a scalable architecture for handling high-quality, low-latency media streams.
+A professional-grade, microservices-based video conferencing platform built with **Next.js**, **Mediasoup (SFU)**, and **Socket.io**. This project demonstrates a scalable architecture for handling high-quality, low-latency media streams with production-grade observability.
 
 ---
 
@@ -21,6 +21,8 @@ graph TD
     Media[Media Service SFU :6000]
     DB[(PostgreSQL)]
     Redis[(Redis Cache)]
+    Consul[Consul Service Discovery]
+    Prom[Prometheus/Grafana]
 
     User -->|HTTP/WS| Nginx
     Nginx -->|/| UI
@@ -31,6 +33,9 @@ graph TD
     Signaling <-->|SQL| DB
     Signaling <-->|State| Redis
     Signaling <-->|gRPC :50051| Media
+    
+    Signaling & Media & Gateway -->|Register| Consul
+    Prom -->|Scrape| Signaling & Media & Gateway
 ```
 
 ### 2. Internal Communication: REST vs gRPC
@@ -70,25 +75,42 @@ sequenceDiagram
 
 ---
 
-## 🚀 Phased Production Roadmap
+## 🛠️ Advanced Features
 
-I have structured the evolution of this product into three clear phases:
+### 📊 Observability Stack
+The project includes a full monitoring and discovery suite:
+- **Consul**: Automated service discovery and health checks.
+- **Prometheus**: Real-time metrics collection from all microservices.
+- **Grafana**: Pre-configured dashboards for monitoring system health and traffic.
 
-### **Phase 1: Performance & Reliability (Current)**
-- [x] **gRPC Migration**: Internal service communication migrated to gRPC for low-latency negotiation.
-- [x] **Explicit Signaling**: Improved video/audio toggle reflection via server-side broadcasting.
-- [x] **SFU Stability**: Fine-tuned Mediasoup worker configuration.
+### 📝 Ephemeral Logging System
+- **Structured Logging**: A custom `BackendLogger` in the `common` library provides JSON-structured logs with timestamps and session tracking.
+- **Named Volumes**: Logs are stored in a Docker Named Volume (`backend_logs`) that is automatically cleaned up with `docker compose down -v`.
+- **Log Viewer**: Access all backend logs in real-time via the browser at:  
+  👉 **[http://localhost:9000](http://localhost:9000)**
 
-### **Phase 2: Hardening & Global Access (Soon)**
-- [ ] **STUN/TURN Cluster**: Deploy **Coturn** servers to bypass symmetric NATs (essential for mobile/corporate networks).
-- [ ] **JWT Auth**: Secure every API and Socket.io connection with signed tokens.
-- [ ] **Health Monitoring**: Advanced health checks and circuit breakers for gRPC calls.
+### 🎨 Premium UI Overhaul
+- **Modern Aesthetics**: Dark-themed UI with advanced glassmorphism and smooth animations.
+- **Custom Design System**: Refined typography, standardized icon sets (`w-6 h-6`), and polished interaction states.
+- **Real-time Chat**: Fully integrated dark-themed chat with private messaging support.
 
-### **Phase 3: Scaling to Millions (Growth)**
-- [ ] **Multi-Core SFU**: Distribute Mediasoup workers across all available CPU cores.
-- [ ] **Redis Pub/Sub**: Enable multi-instance Signaling services for global scale.
-- [ ] **Pipe Transports**: Implement inter-server media routing for very large rooms.
-- [ ] **Observability**: Prometheus/Grafana dashboards for real-time jitter and packet loss monitoring.
+---
+
+## 🚀 Development Progress
+
+### **Completed Foundations (Phase 1 & 2)**
+- [x] **gRPC Migration**: Internal service communication for low-latency negotiation.
+- [x] **Microservices**: Separation of API Gateway, Signaling, and Media services.
+- [x] **SFU Stability**: Fine-tuned Mediasoup worker configuration for multi-core scaling.
+- [x] **Observability**: Consul, Prometheus, and Grafana integration.
+- [x] **Structured Logging**: Centralized logging with browser-based access.
+- [x] **Premium UI**: Complete overhaul of the frontend user experience.
+
+### **Scaling to Millions (Phase 3)**
+- [ ] **Multi-Instance Scale**: Distribute Mediasoup workers across multiple nodes.
+- [ ] **Redis Pub/Sub**: Sync signaling states across different regions.
+- [ ] **STUN/TURN Cluster**: Global bypass for restrictive firewalls.
+- [ ] **JWT Auth**: Production-ready security for all endpoints.
 
 ---
 
