@@ -8,6 +8,7 @@ export { grpc as grpcLib };
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,11 +23,62 @@ export const pool = new Pool({
 
 export const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
-export const logger = {
-    info: (msg: string, ...args: any[]) => console.log(`[INFO] ${msg}`, ...args),
-    error: (msg: string, ...args: any[]) => console.error(`[ERROR] ${msg}`, ...args),
-    warn: (msg: string, ...args: any[]) => console.warn(`[WARN] ${msg}`, ...args),
-};
+class BackendLogger {
+    private logDir = '/app/logs';
+    private logFile: string | null = null;
+
+    constructor() {
+        const serviceName = process.env.SERVICE_NAME;
+        if (serviceName) {
+            this.logFile = path.join(this.logDir, `${serviceName}.log`);
+            try {
+                if (!fs.existsSync(this.logDir)) {
+                    fs.mkdirSync(this.logDir, { recursive: true });
+                }
+                // Write session separator
+                fs.appendFileSync(this.logFile, `\n\n--- NEW SESSION: ${new Date().toISOString()} ---\n`);
+            } catch (err) {
+                console.error(`Failed to initialize file logging: ${err}`);
+            }
+        }
+    }
+
+    private format(level: string, msg: string, data?: any) {
+        const timestamp = new Date().toISOString();
+        const dataStr = data ? ` | Data: ${JSON.stringify(data)}` : '';
+        return `[${timestamp}] [${level}] ${msg}${dataStr}`;
+    }
+
+    private writeToFile(formattedMsg: string) {
+        if (this.logFile) {
+            try {
+                fs.appendFileSync(this.logFile, formattedMsg + '\n');
+            } catch (err) {
+                // Ignore file write errors after initial failure to prevent loop
+            }
+        }
+    }
+
+    info(msg: string, data?: any) {
+        const formatted = this.format('INFO', msg, data);
+        console.log(formatted);
+        this.writeToFile(formatted);
+    }
+
+    warn(msg: string, data?: any) {
+        const formatted = this.format('WARN', msg, data);
+        console.warn(formatted);
+        this.writeToFile(formatted);
+    }
+
+    error(msg: string, data?: any) {
+        const formatted = this.format('ERROR', msg, data);
+        console.error(formatted);
+        this.writeToFile(formatted);
+    }
+}
+
+export const logger = new BackendLogger();
 
 // gRPC helpers
 export const PROTO_PATH = path.join(__dirname, 'proto/media.proto');

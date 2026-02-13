@@ -1,14 +1,14 @@
 "use client";
 
-import { Mic, MicOff, Video, VideoOff, PhoneOff, LayoutGrid, Maximize2, MoreVertical, MessageSquare, Users, Monitor, MonitorOff, Link, Check } from 'lucide-react';
+import {
+    Mic, MicOff, Video, VideoOff, PhoneOff,
+    ScreenShare, StopCircle, MessageSquare, Users,
+    Copy, Settings, Check, FileText
+} from 'lucide-react';
 import { useState } from 'react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { useRoomStore } from '@/store/useRoomStore';
-
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 interface ControlsProps {
     onStartScreenShare: () => void;
@@ -37,142 +37,140 @@ export const Controls = ({
     micOn,
     videoOn
 }: ControlsProps) => {
-    const toggleLayout = useRoomStore((state) => state.toggleLayout);
-    const layout = useRoomStore((state) => state.layout);
-    const participantsMap = useRoomStore((state) => state.participants);
-    const roomId = useRoomStore((state) => state.roomId);
-    const participantCount = participantsMap.size;
     const [copied, setCopied] = useState(false);
+    const roomId = useRoomStore((state) => state.roomId);
 
     const copyLink = () => {
-        const url = window.location.href;
-        navigator.clipboard.writeText(url);
+        navigator.clipboard.writeText(window.location.href);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     return (
-        <div className="h-24 bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]">
-            {/* Left side info */}
-            <div className="hidden md:flex items-center gap-4 w-1/4">
-                <div className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                    <span className="text-slate-600 text-sm font-medium tracking-tight">
-                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        <div className="h-24 bg-[#050811]/95 backdrop-blur-xl border-t border-white/10 px-6 sm:px-10 flex items-center justify-between z-50">
+            {/* Left Info: Meeting Details */}
+            <div className="flex items-center gap-6 w-1/4 min-w-[200px]">
+                <div className="hidden lg:flex flex-col gap-1">
+                    <span className="text-white text-base font-semibold tracking-tight">
+                        Live Session
                     </span>
-                    <span className="mx-2 text-slate-300">|</span>
-                    <span className="text-slate-800 text-sm font-bold">In Call</span>
+                    <span className="text-slate-500 text-[11px] font-medium tracking-[0.1em] uppercase flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} | {roomId?.slice(0, 8)}
+                    </span>
                 </div>
             </div>
 
-            {/* Main Controls - Center */}
-            <div className="flex items-center gap-3 md:gap-5">
-                <ControlBtn
-                    active={micOn}
+            {/* Center: Main Controls */}
+            <div className="flex items-center gap-3 sm:gap-6 justify-center flex-1">
+                <button
                     onClick={onToggleMic}
-                    icon={micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5 text-rose-500" />}
-                    danger={!micOn}
-                    label="Toggle Mic"
-                />
+                    className={cn(
+                        "h-14 w-14 sm:w-20 rounded-2xl flex items-center justify-center btn-hover-effect border-2 transition-all",
+                        micOn
+                            ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                            : "bg-rose-500/90 border-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)]"
+                    )}
+                    title={micOn ? "Mute Microphone" : "Unmute Microphone"}
+                >
+                    {micOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
+                </button>
 
-                <ControlBtn
-                    active={videoOn}
+                <button
                     onClick={onToggleVideo}
-                    icon={videoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5 text-rose-500" />}
-                    danger={!videoOn}
-                    label="Toggle Video"
-                />
+                    className={cn(
+                        "h-14 w-14 sm:w-20 rounded-2xl flex items-center justify-center btn-hover-effect border-2 transition-all",
+                        videoOn
+                            ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                            : "bg-rose-500/90 border-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)]"
+                    )}
+                    title={videoOn ? "Stop Video" : "Start Video"}
+                >
+                    {videoOn ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                </button>
 
-                <ControlBtn
-                    active={!isScreenSharing}
+                <button
                     onClick={isScreenSharing ? onStopScreenShare : onStartScreenShare}
-                    icon={isScreenSharing ? <MonitorOff className="w-5 h-5 text-rose-500" /> : <Monitor className="w-5 h-5" />}
-                    danger={isScreenSharing}
-                    label={isScreenSharing ? "Stop Sharing" : "Share Screen"}
-                />
+                    className={cn(
+                        "h-14 w-14 sm:w-20 rounded-2xl flex items-center justify-center btn-hover-effect border-2 transition-all",
+                        isScreenSharing
+                            ? "bg-emerald-500/90 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                            : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                    )}
+                    title={isScreenSharing ? "Stop Sharing" : "Share Screen"}
+                >
+                    {isScreenSharing ? <StopCircle className="w-6 h-6" /> : <ScreenShare className="w-6 h-6" />}
+                </button>
 
-                <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
+                <div className="w-[1px] h-10 bg-white/10 mx-2 hidden sm:block" />
 
-                <ControlBtn
-                    active={layout === 'grid'}
-                    onClick={toggleLayout}
-                    icon={<LayoutGrid className="w-5 h-5" />}
-                    label={layout === 'grid' ? "Switch to Spotlight" : "Switch to Grid"}
-                />
-
-                <ControlBtn
-                    active={false}
+                <button
                     onClick={() => window.location.href = '/'}
-                    icon={<PhoneOff className="w-5 h-5" />}
-                    className="bg-rose-600 border-rose-500 text-white hover:bg-rose-700 hover:border-rose-600 w-14 h-14 md:w-16 md:h-16"
-                    label="End Call"
-                />
+                    className="h-14 px-8 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-bold flex items-center gap-3 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-rose-500/30 border-2 border-rose-400/20"
+                    title="Leave Meeting"
+                >
+                    <PhoneOff className="w-6 h-6" />
+                    <span className="hidden md:block text-sm uppercase tracking-wider">Leave</span>
+                </button>
             </div>
 
-            {/* Right side utils */}
-            <div className="hidden md:flex items-center justify-end gap-2 w-1/4">
-                <UtilBtn
-                    icon={copied ? <Check className="w-5 h-5 text-green-500" /> : <Link className="w-5 h-5" />}
+            {/* Right: Actions */}
+            <div className="flex items-center justify-end gap-4 w-1/4">
+                <button
+                    onClick={() => logger.downloadLogs()}
+                    className="p-3.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl transition-all border border-white/10 group relative"
+                    title="Download Debug Logs"
+                >
+                    <FileText className="w-6 h-6" />
+                    <span className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900 text-white text-[11px] font-semibold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10 shadow-2xl">
+                        Download Session Logs
+                    </span>
+                </button>
+
+                <button
                     onClick={copyLink}
-                    active={copied}
-                    label={copied ? "Copied!" : "Copy Joining Link"}
-                />
-                <UtilBtn
-                    icon={
-                        <div className="relative">
-                            <Users className="w-5 h-5" />
-                            {participantCount > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                                    {participantCount}
-                                </span>
-                            )}
-                        </div>
-                    }
+                    className="p-3.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl transition-all border border-white/10 group relative"
+                    title="Copy Meeting Link"
+                >
+                    {copied ? <Check className="w-6 h-6 text-emerald-500" /> : <Copy className="w-6 h-6" />}
+                    {copied && (
+                        <span className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-emerald-600 text-white text-[11px] font-semibold rounded-lg opacity-100 transition-opacity whitespace-nowrap shadow-2xl">
+                            Copied!
+                        </span>
+                    )}
+                </button>
+
+                <div className="w-[1px] h-8 bg-white/10 mx-1 hidden lg:block" />
+
+                <button
                     onClick={onToggleParticipants}
-                    active={isParticipantsOpen}
-                />
-                <UtilBtn
-                    icon={<MessageSquare className="w-5 h-5" />}
+                    className={cn(
+                        "p-3.5 rounded-2xl transition-all border-2",
+                        isParticipantsOpen ? "bg-primary border-primary/50 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+                    )}
+                    title="Participants"
+                >
+                    <Users className="w-6 h-6" />
+                </button>
+
+                <button
                     onClick={onToggleChat}
-                    active={isChatOpen}
-                />
-                <UtilBtn icon={<MoreVertical className="w-5 h-5" />} />
+                    className={cn(
+                        "p-3.5 rounded-2xl transition-all border-2",
+                        isChatOpen ? "bg-primary border-primary/50 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+                    )}
+                    title="Chat"
+                >
+                    <MessageSquare className="w-6 h-6" />
+                </button>
+
+                <button
+                    className="p-3.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl transition-all border border-white/10"
+                    title="Settings"
+                >
+                    <Settings className="w-6 h-6" />
+                </button>
             </div>
         </div>
     );
 };
-
-const ControlBtn = ({ active, onClick, icon, danger, className, label }: any) => (
-    <button
-        onClick={onClick}
-        className={cn(
-            "relative flex items-center justify-center rounded-2xl transition-all duration-300 border shadow-sm group",
-            active && !danger
-                ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-white hover:border-blue-400 hover:text-blue-600"
-                : "bg-slate-900 border-slate-800 text-white hover:bg-slate-800",
-            danger && "bg-rose-50 border-rose-200 hover:bg-rose-100",
-            "w-12 h-12 md:w-14 md:h-14",
-            className
-        )}
-        title={label}
-    >
-        {icon}
-        <span className="absolute -top-12 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">
-            {label}
-        </span>
-    </button>
-);
-
-const UtilBtn = ({ icon, onClick, active, label }: any) => (
-    <button
-        onClick={onClick}
-        title={label}
-        className={cn(
-            "p-3 rounded-xl transition-all",
-            active
-                ? "bg-blue-50 text-blue-600 shadow-inner"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-        )}
-    >
-        {icon}
-    </button>
-);

@@ -119,29 +119,40 @@ export default function RoomPage() {
     }, []); // Empty deps - only run on mount/unmount
 
     return (
-        <main className="flex flex-col h-screen bg-slate-50 overflow-hidden">
+        <main className="flex flex-col h-screen bg-[#0a0e1a] text-slate-200 overflow-hidden relative">
             {isMounted && !userName && <NameInputModal onSubmit={handleNameSubmit} roomId={roomId} />}
+
+            {/* Immersive Background */}
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px]" />
+            </div>
+
             {/* Header */}
-            <header className="h-16 border-b border-slate-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md z-10 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <Video className="text-white w-5 h-5" />
+            <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 bg-black/20 backdrop-blur-2xl z-20">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                        <Video className="text-white w-6 h-6" />
                     </div>
-                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
-                        Live Room: <span className="text-blue-600 font-mono">{roomId}</span>
-                    </h1>
+                    <div className="flex flex-col">
+                        <h1 className="text-sm font-black text-white tracking-widest uppercase">
+                            Room: <span className="text-primary">{roomId.slice(0, 8)}</span>
+                        </h1>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Encrypted • P2P Optimized</span>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/20">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black text-green-500 uppercase tracking-tighter">HD Active</span>
+                    </div>
                     <button
                         onClick={() => setIsChatOpen(!isChatOpen)}
-                        className={`p-2 rounded-lg transition-all ${isChatOpen ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 text-slate-500'}`}
+                        className={`p-2.5 rounded-xl transition-all border ${isChatOpen ? 'bg-primary border-primary/50 text-white' : 'hover:bg-white/5 border-white/10 text-slate-400'}`}
                     >
                         <MessageSquare className="w-5 h-5" />
                     </button>
-                    <div className="px-3 py-1 bg-green-50 text-green-700 text-[10px] font-bold rounded-full border border-green-200">
-                        HD ACTIVE
-                    </div>
                 </div>
             </header>
 
@@ -152,20 +163,24 @@ export default function RoomPage() {
                 </div>
 
                 {isParticipantsOpen && (
-                    <ParticipantList onClose={() => setIsParticipantsOpen(false)} />
+                    <div className="w-96 bg-black/40 backdrop-blur-3xl border-l border-white/5 animate-in slide-in-from-right duration-500 z-30">
+                        <ParticipantList onClose={() => setIsParticipantsOpen(false)} />
+                    </div>
                 )}
 
                 {isChatOpen && socket && roomId && userName && (
-                    <Chat
-                        socket={socket}
-                        roomId={roomId}
-                        userName={userName}
-                        onClose={() => setIsChatOpen(false)}
-                    />
+                    <div className="w-96 bg-black/40 backdrop-blur-3xl border-l border-white/5 animate-in slide-in-from-right duration-500 z-30">
+                        <Chat
+                            socket={socket}
+                            roomId={roomId}
+                            userName={userName}
+                            onClose={() => setIsChatOpen(false)}
+                        />
+                    </div>
                 )}
             </div>
 
-            {/* Bottom Controls Area */}
+            {/* Floating Controls Area */}
             <Controls
                 onStartScreenShare={startScreenShare}
                 onStopScreenShare={stopScreenShare}

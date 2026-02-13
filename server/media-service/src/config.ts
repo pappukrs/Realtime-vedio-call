@@ -9,8 +9,8 @@ export const config = {
         worker: {
             rtcMinPort: 40000,
             rtcMaxPort: 40100,
-            logLevel: (process.env.MEDIASOUP_LOG_LEVEL || 'info') as any,
-            logTags: ['info', 'ice', 'dtls', 'rtp', 'srtp', 'rtcp'] as any[],
+            logLevel: 'warn',
+            logTags: ['ice', 'dtls', 'rtp', 'srtp', 'rtcp', 'rtx', 'bwe', 'score', 'simulcast', 'svc', 'sctp'] as any[],
         },
         router: {
             mediaCodecs: [

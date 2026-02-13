@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, MessageCircle, X } from 'lucide-react';
+import { Send, User, MessageCircle, X, MessageSquare } from 'lucide-react';
 import { useRoomStore } from '@/store/useRoomStore';
-import { clsx } from 'clsx';
+import { cn } from '@/lib/utils';
 
 interface ChatProps {
     socket: any;
@@ -46,44 +46,57 @@ export const Chat: React.FC<ChatProps> = ({ socket, roomId, userName, onClose })
         .map(([id, p]) => ({ id, name: p.userName || 'Anonymous' }));
 
     return (
-        <div className="flex flex-col h-full w-80 bg-white border-l border-slate-200 shadow-xl overflow-hidden animate-in slide-in-from-right duration-300">
+        <div className="flex flex-col h-full w-[360px] bg-[#0a0e1a]/95 backdrop-blur-3xl border-l border-white/10 shadow-2xl overflow-hidden animate-in slide-in-from-right duration-500">
             {/* Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                    <MessageCircle className="w-5 h-5 text-blue-600" />
-                    <h2 className="font-bold text-slate-800">Room Chat</h2>
+            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-xl">
+                        <MessageCircle className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                        <h2 className="font-bold text-white tracking-tight">Messages</h2>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mt-1">
+                            {participantList.length + 1} participants
+                        </p>
+                    </div>
                 </div>
                 <button
                     onClick={onClose}
-                    className="p-1 hover:bg-slate-200 rounded-full transition-colors"
+                    className="p-2 hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-white/10 group"
                 >
-                    <X className="w-5 h-5 text-slate-500" />
+                    <X className="w-5 h-5 text-slate-400 group-hover:text-white" />
                 </button>
             </div>
 
             {/* Recipient Selector */}
-            <div className="p-3 border-b border-slate-50">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
-                    Send To
+            <div className="px-6 py-4 bg-white/[0.01] border-b border-white/5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 block">
+                    Message Target
                 </label>
-                <select
-                    value={recipientId || ''}
-                    onChange={(e) => setRecipientId(e.target.value || null)}
-                    className="w-full p-2 bg-slate-100 border-none rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                >
-                    <option value="">Everyone</option>
-                    {participantList.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                </select>
+                <div className="relative group">
+                    <select
+                        value={recipientId || ''}
+                        onChange={(e) => setRecipientId(e.target.value || null)}
+                        className="w-full pl-4 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-200 focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all appearance-none cursor-pointer hover:bg-white/10"
+                    >
+                        <option value="" className="bg-[#0a0e1a]">Everyone</option>
+                        {participantList.map(p => (
+                            <option key={p.id} value={p.id} className="bg-[#0a0e1a]">{p.name}</option>
+                        ))}
+                    </select>
+                    <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none group-hover:text-slate-300 transition-colors" />
+                </div>
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
                 {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 opacity-60">
-                        <MessageCircle className="w-12 h-12 mb-2" />
-                        <p className="text-sm font-medium">No messages yet</p>
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/5">
+                            <MessageSquare className="w-8 h-8 text-slate-600" />
+                        </div>
+                        <p className="text-sm font-semibold text-slate-400">No messages yet</p>
+                        <p className="text-[11px] text-slate-600 mt-1 max-w-[150px]">Be the first to say hello to everyone!</p>
                     </div>
                 ) : (
                     messages.map((msg, i) => {
@@ -91,32 +104,32 @@ export const Chat: React.FC<ChatProps> = ({ socket, roomId, userName, onClose })
                         return (
                             <div
                                 key={i}
-                                className={clsx(
-                                    "flex flex-col max-w-[85%]",
+                                className={cn(
+                                    "flex flex-col max-w-[90%] group",
                                     isMe ? "ml-auto items-end" : "items-start"
                                 )}
                             >
-                                <div className="flex items-center gap-1 mb-1 px-1">
-                                    {!isMe && <span className="text-[10px] font-bold text-slate-500">{msg.senderName}</span>}
+                                <div className="flex items-center gap-2 mb-1.5 px-1">
+                                    {!isMe && <span className="text-[11px] font-bold text-slate-400 truncate max-w-[120px]">{msg.senderName}</span>}
                                     {msg.isPrivate && (
-                                        <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">
-                                            Private
+                                        <span className="text-[9px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-lg border border-amber-500/20 font-black uppercase tracking-wider">
+                                            Secret
                                         </span>
                                     )}
+                                    <span className="text-[9px] text-slate-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
                                 </div>
                                 <div
-                                    className={clsx(
-                                        "p-3 rounded-2xl text-sm break-words shadow-sm",
+                                    className={cn(
+                                        "p-3.5 rounded-2xl text-[13px] leading-relaxed break-words shadow-lg border",
                                         isMe
-                                            ? "bg-blue-600 text-white rounded-tr-none"
-                                            : "bg-slate-100 text-slate-800 rounded-tl-none"
+                                            ? "bg-primary border-primary/20 text-white rounded-tr-none shadow-primary/10"
+                                            : "bg-white/5 border-white/10 text-slate-200 rounded-tl-none"
                                     )}
                                 >
                                     {msg.message}
                                 </div>
-                                <span className="text-[9px] text-slate-400 mt-1 px-1">
-                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
                             </div>
                         );
                     })
@@ -125,23 +138,28 @@ export const Chat: React.FC<ChatProps> = ({ socket, roomId, userName, onClose })
             </div>
 
             {/* Input Area */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-100 bg-white">
-                <div className="relative flex items-center">
-                    <input
-                        type="text"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder={recipientId ? "Type a private message..." : "Message everyone..."}
-                        className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                    />
-                    <button
-                        type="submit"
-                        disabled={!message.trim()}
-                        className="absolute right-1.5 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
-                    >
-                        <Send className="w-4 h-4" />
-                    </button>
+            <form onSubmit={handleSendMessage} className="p-6 border-t border-white/10 bg-white/[0.02]">
+                <div className="relative flex items-center gap-3">
+                    <div className="flex-1 relative">
+                        <input
+                            type="text"
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            placeholder={recipientId ? "Secret message..." : "Message team..."}
+                            className="w-full pl-5 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all shadow-inner"
+                        />
+                        <button
+                            type="submit"
+                            disabled={!message.trim()}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-white rounded-xl hover:bg-primary-hover disabled:opacity-30 disabled:grayscale transition-all shadow-xl shadow-primary/20 active:scale-90"
+                        >
+                            <Send className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
+                <p className="text-[10px] text-center text-slate-600 mt-4 font-medium italic">
+                    Press Enter to send
+                </p>
             </form>
         </div>
     );

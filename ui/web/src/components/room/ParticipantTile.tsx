@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Pin, PinOff, User, Mic, MicOff } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useRoomStore } from '@/store/useRoomStore';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -113,8 +114,8 @@ export const ParticipantTile = ({ userId, userName, videoTrack, audioTrack, scre
 
     return (
         <div className={cn(
-            "group relative w-full h-full bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center transition-all duration-300 ring-2 ring-transparent bg-gradient-to-br from-slate-900 to-slate-800",
-            isPinned && "ring-blue-500 shadow-xl"
+            "group relative w-full h-full bg-[#0a0f1e]/40 rounded-[2.5rem] overflow-hidden flex items-center justify-center transition-all duration-700 border border-white/[0.03]",
+            isPinned && "border-primary/40 shadow-[0_0_40px_rgba(59,130,246,0.1)]"
         )}>
             {/* Audio Element (Remote only) */}
             {!isLocal && <audio ref={audioRef} autoPlay playsInline className="hidden" />}
@@ -123,63 +124,75 @@ export const ParticipantTile = ({ userId, userName, videoTrack, audioTrack, scre
                 <video
                     ref={videoRef}
                     autoPlay
-                    muted={true} // Always mute video to bypass Autoplay restrictions
+                    muted={true}
                     playsInline
                     className={cn(
-                        "w-full h-full object-cover transition-transform duration-500",
-                        isPinned ? "scale-100" : "scale-[1.01] hover:scale-100",
-                        screenTrack && "object-contain bg-black" // Handle screen aspect ratios better
+                        "w-full h-full object-cover transition-transform duration-1000",
+                        isPinned ? "scale-100" : "scale-[1.01] group-hover:scale-100",
+                        screenTrack && "object-contain bg-[#050811]"
                     )}
                 />
             ) : (
-                <div className="flex flex-col items-center gap-3 animate-in fade-in zoom-in duration-300">
-                    <div className="w-20 h-20 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-full flex items-center justify-center shadow-lg border-2 border-slate-700">
-                        <User className="text-white w-10 h-10" />
+                <div className="flex flex-col items-center gap-8 animate-in fade-in zoom-in-95 duration-1000">
+                    <div className="relative">
+                        <div className="absolute -inset-8 bg-primary/10 rounded-full blur-3xl opacity-30 group-hover:opacity-60 transition-opacity duration-1000" />
+                        <div className="relative w-28 h-28 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-full flex items-center justify-center shadow-2xl border border-white/10 group-hover:border-primary/30 transition-all duration-700 overflow-hidden">
+                            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <User className="text-slate-600 w-14 h-14 group-hover:text-primary/70 transition-all duration-500 group-hover:scale-110" />
+                        </div>
                     </div>
-                    <div className="text-slate-400 text-sm font-medium tracking-wide">
-                        {isLocal
-                            ? (isVideoPaused ? 'Camera paused' : 'Camera is off')
-                            : `${userName || `User ${userId.slice(0, 4)}`}'s ${isVideoPaused ? 'camera paused' : 'camera off'}`
-                        }
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase opacity-40 group-hover:opacity-100 transition-all duration-700">
+                            Camera Off
+                        </div>
+                        <div className="h-1 w-12 bg-white/5 rounded-full overflow-hidden">
+                            <div className="h-full w-full bg-primary/20 animate-shimmer" />
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
             {/* Name/Status Label */}
-            <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 backdrop-blur-md rounded-full border border-slate-700/50 shadow-lg translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                <div className={cn("w-2 h-2 rounded-full", isLocal ? "bg-green-500 animate-pulse" : "bg-blue-500")} />
-                <span className="text-white text-[11px] font-semibold tracking-tight">
-                    {userName || (isLocal ? 'You' : `User ${userId.slice(0, 6)}`)}
-                    {screenTrack && <span className="ml-2 text-blue-400 font-bold border border-blue-400/30 px-1.5 rounded-sm text-[9px]">SCREEN</span>}
+            <div className="absolute bottom-6 left-6 flex items-center gap-3 pl-2 pr-5 py-2.5 bg-black/60 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-700 ease-out">
+                <div className="relative">
+                    <div className={cn("w-2.5 h-2.5 rounded-full", isLocal ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : "bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]")} />
+                    <div className={cn("absolute inset-0 rounded-full animate-ping opacity-20", isLocal ? "bg-emerald-500" : "bg-primary")} />
+                </div>
+                <span className="text-white text-[13px] font-bold tracking-tight">
+                    {userName || (isLocal ? 'You' : `User ${userId.slice(0, 4)}`)}
+                    {screenTrack && <span className="ml-2 text-primary font-black animate-pulse">● SCREEN</span>}
                 </span>
-                {showMicOff && <MicOff className="w-3 h-3 text-rose-500 ml-1" />}
+                {showMicOff && <MicOff className="w-4 h-4 text-rose-500/90 ml-2" />}
             </div>
 
-            {/* Controls */}
-            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            {/* Microphone Status (Floating) */}
+            {showMicOff && (
+                <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="absolute top-6 left-6 p-3 bg-rose-500/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-rose-500/20"
+                >
+                    <MicOff className="w-5 h-5 text-rose-500" />
+                </motion.div>
+            )}
+
+            {/* Pin Action */}
+            <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-700 translate-x-4 group-hover:translate-x-0">
                 <button
                     onClick={togglePin}
                     className={cn(
-                        "p-2 rounded-full backdrop-blur-md border transition-all duration-200 shadow-lg hover:scale-110 active:scale-95",
+                        "p-3.5 rounded-2xl backdrop-blur-2xl border-2 transition-all duration-500 shadow-2xl hover:scale-105 active:scale-90",
                         isPinned
-                            ? "bg-blue-600 border-blue-400 text-white"
-                            : "bg-slate-900/80 border-slate-700 text-slate-300 hover:border-blue-500 hover:text-blue-400"
+                            ? "bg-primary border-primary/50 text-white shadow-primary/20"
+                            : "bg-white/5 border-white/10 text-slate-300 hover:border-primary/50 hover:text-white"
                     )}
-                    title={isPinned ? "Unpin participant" : "Pin participant"}
                 >
-                    {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                    {isPinned ? <PinOff className="w-6 h-6" /> : <Pin className="w-6 h-6" />}
                 </button>
             </div>
-
-            {/* Microphone Status (Always visible if muted) */}
-            {showMicOff && (
-                <div className="absolute top-3 left-3 p-2 bg-rose-600/90 backdrop-blur-sm rounded-full shadow-lg">
-                    <MicOff className="w-4 h-4 text-white" />
-                </div>
-            )}
         </div>
     );
 };

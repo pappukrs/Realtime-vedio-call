@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import dotenv from 'dotenv';
-import { register, registerService, httpRequestsTotal, httpRequestDuration } from 'common';
+import { register, registerService, httpRequestsTotal, httpRequestDuration, logger } from 'common';
 
 dotenv.config();
 
@@ -67,6 +67,6 @@ app.use('/api/rooms', createProxyMiddleware({
 }));
 
 app.listen(PORT, async () => {
-    console.log(`API Gateway running on port ${PORT}`);
+    logger.info(`API Gateway running on port ${PORT}`);
     await registerService('api-gateway', Number(PORT));
 });

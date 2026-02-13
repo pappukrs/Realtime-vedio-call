@@ -5,6 +5,8 @@ import util from 'util';
 const mediaProto = (getMediaDefinition() as any).media;
 const MEDIA_SERVICE_GRPC_URL = process.env.MEDIA_SERVICE_GRPC_URL || 'media-service:50051';
 
+logger.info(`Initializing gRPC client for MediaService at ${MEDIA_SERVICE_GRPC_URL}`);
+
 const client = new mediaProto.MediaService(
     MEDIA_SERVICE_GRPC_URL,
     grpc.credentials.createInsecure()

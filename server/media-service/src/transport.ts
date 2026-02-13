@@ -21,8 +21,10 @@ export const createWebRtcTransport = async (router: Router): Promise<WebRtcTrans
         initialAvailableOutgoingBitrate,
     });
 
+    logger.info('WebRtcTransport created', { transportId: transport.id });
 
     transport.on('dtlsstatechange', (dtlsState: any) => {
+        logger.info('Transport DTLS state change', { transportId: transport.id, dtlsState });
         if (dtlsState === 'closed') {
             transport.close();
         }

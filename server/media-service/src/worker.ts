@@ -13,19 +13,36 @@ export const createWorkers = async () => {
     const numWorkers = os.cpus().length;
 
     for (let i = 0; i < numWorkers; i++) {
-        const worker = await mediasoup.createWorker({
-            logLevel: config.mediasoup.worker.logLevel,
-            logTags: config.mediasoup.worker.logTags,
-            rtcMinPort: config.mediasoup.worker.rtcMinPort,
-            rtcMaxPort: config.mediasoup.worker.rtcMaxPort,
-        });
+        try {
+            logger.info(`Creating mediasoup worker ${i + 1}/${numWorkers}...`);
+            const worker = await mediasoup.createWorker({
+                logLevel: config.mediasoup.worker.logLevel as any,
+                logTags: config.mediasoup.worker.logTags as any,
+                rtcMinPort: config.mediasoup.worker.rtcMinPort,
+                rtcMaxPort: config.mediasoup.worker.rtcMaxPort,
+            });
 
-        worker.on('died', () => {
-            logger.error('mediasoup worker died, exiting in 2 seconds...', { pid: worker.pid });
-            setTimeout(() => process.exit(1), 2000);
-        });
+            logger.info('Mediasoup Worker created', { pid: worker.pid });
 
-        workers.push(worker);
+            worker.on('died', () => {
+                logger.error('mediasoup worker died, exiting in 2 seconds...', { pid: worker.pid });
+                setTimeout(() => process.exit(1), 2000);
+            });
+
+            workers.push(worker);
+        } catch (err: any) {
+            logger.error(`Failed to create mediasoup worker ${i + 1}:`, {
+                message: err.message,
+                stack: err.stack,
+                settings: {
+                    logLevel: config.mediasoup.worker.logLevel,
+                    logTags: config.mediasoup.worker.logTags,
+                    rtcMinPort: config.mediasoup.worker.rtcMinPort,
+                    rtcMaxPort: config.mediasoup.worker.rtcMaxPort
+                }
+            });
+            throw err;
+        }
     }
 };
 

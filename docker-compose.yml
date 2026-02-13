@@ -27,6 +27,9 @@ services:
       - DATABASE_URL=postgresql://user:pass@postgres:5432/videocall
       - REDIS_URL=redis://redis:6379
       - CONSUL_HOST=consul
+      - SERVICE_NAME=api-gateway
+    volumes:
+      - backend_logs:/app/logs
     depends_on:
       - postgres
       - redis
@@ -48,7 +51,11 @@ services:
       - REDIS_URL=redis://redis:6379
       - CONSUL_HOST=consul
       - MEDIASOUP_LISTEN_IP=0.0.0.0
+      # If accessing from other devices, set this to the host's LAN IP
       - MEDIASOUP_ANNOUNCED_IP=127.0.0.1
+      - SERVICE_NAME=media-service
+    volumes:
+      - backend_logs:/app/logs
     depends_on:
       - postgres
       - redis
@@ -67,6 +74,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql://user:pass@postgres:5432/videocall
       - CONSUL_HOST=consul
+      - SERVICE_NAME=signaling-service
+    volumes:
+      - backend_logs:/app/logs
     depends_on:
       - redis
       - postgres
@@ -122,5 +132,15 @@ services:
     depends_on:
       - prometheus
 
+  log-server:
+    image: python:3.9-slim
+    ports:
+      - "9000:9000"
+    volumes:
+      - backend_logs:/logs:ro
+    working_dir: /logs
+    command: python -m http.server 9000
+
 volumes:
   postgres_data:
+  backend_logs:

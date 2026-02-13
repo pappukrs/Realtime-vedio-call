@@ -63,6 +63,7 @@ app.post('/rooms/:roomId/transports', async (req, res) => {
         const room = rooms.get(roomId);
         if (!room) return res.status(404).json({ error: 'Room not found' });
 
+        logger.info('API: createWebRtcTransport', { roomId, direction });
         const transport = await createWebRtcTransport(room.router);
         transports.set(transport.id, transport);
 
@@ -264,7 +265,7 @@ const grpcHandlers = {
             }
             callback(null, { rtpCapabilities: JSON.stringify(room.router.rtpCapabilities) });
         } catch (error: any) {
-            logger.error(`GetRouterRtpCapabilities error: ${error.message}`);
+            logger.error('gRPC: GetRouterRtpCapabilities failed', { roomId: call.request.roomId, error: error.message });
             callback({ code: 5, message: error.message });
         }
     },
@@ -287,7 +288,7 @@ const grpcHandlers = {
                 })
             });
         } catch (error: any) {
-            logger.error(`CreateWebRtcTransport error: ${error.message}`);
+            logger.error('gRPC: CreateWebRtcTransport failed', { roomId: call.request.roomId, error: error.message });
             callback({ code: 5, message: error.message });
         }
     },
@@ -300,8 +301,8 @@ const grpcHandlers = {
             await transport.connect({ dtlsParameters: JSON.parse(dtlsParameters) });
             callback(null, {});
         } catch (error: any) {
-            logger.error(`ConnectWebRtcTransport error: ${error.message}`);
-            callback({ code: 5, message: error.message });
+            logger.error('gRPC: ConnectWebRtcTransport failed', { transportId: call.request.transportId, error: error.message });
+            callback(error);
         }
     },
 
@@ -336,8 +337,8 @@ const grpcHandlers = {
 
             callback(null, { id: producer.id });
         } catch (error: any) {
-            logger.error(`Produce error: ${error.message}`);
-            callback({ code: 5, message: error.message });
+            logger.error('gRPC: Produce failed', { transportId: call.request.transportId, kind: call.request.kind, error: error.message });
+            callback(error);
         }
     },
 
@@ -384,8 +385,8 @@ const grpcHandlers = {
                 })
             });
         } catch (error: any) {
-            logger.error(`Consume error: ${error.message}`);
-            callback({ code: 5, message: error.message });
+            logger.error('gRPC: Consume failed', { transportId: call.request.transportId, producerId: call.request.producerId, error: error.message });
+            callback(error);
         }
     },
 
@@ -401,8 +402,8 @@ const grpcHandlers = {
             logger.info(`Consumer resumed: ${consumerId} (kind: ${consumer.kind})`);
             callback(null, {});
         } catch (error: any) {
-            logger.error(`ResumeConsumer error: ${error.message}`);
-            callback({ code: 5, message: error.message });
+            logger.error('gRPC: ResumeConsumer failed', { consumerId: call.request.consumerId, error: error.message });
+            callback(error);
         }
     },
 
@@ -422,8 +423,8 @@ const grpcHandlers = {
             }
             callback(null, {});
         } catch (error: any) {
-            logger.error(`CloseProducer error: ${error.message}`);
-            callback({ code: 5, message: error.message });
+            logger.error('gRPC: CloseProducer failed', { producerId: call.request.producerId, error: error.message });
+            callback(error);
         }
     },
 
@@ -435,8 +436,8 @@ const grpcHandlers = {
             await producer.pause();
             callback(null, {});
         } catch (error: any) {
-            logger.error(`PauseProducer error: ${error.message}`);
-            callback({ code: 5, message: error.message });
+            logger.error('gRPC: PauseProducer failed', { producerId: call.request.producerId, error: error.message });
+            callback(error);
         }
     },
 
@@ -448,8 +449,8 @@ const grpcHandlers = {
             await producer.resume();
             callback(null, {});
         } catch (error: any) {
-            logger.error(`ResumeProducer error: ${error.message}`);
-            callback({ code: 5, message: error.message });
+            logger.error('gRPC: ResumeProducer failed', { producerId: call.request.producerId, error: error.message });
+            callback(error);
         }
     },
 
