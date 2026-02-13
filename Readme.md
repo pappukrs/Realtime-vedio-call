@@ -8,10 +8,80 @@ A professional-grade, microservices-based video conferencing platform built with
 
 The system is built on a distributed microservices model to ensure scalability and separation of concerns.
 
-### System Diagram (Logic Flow)
-1. **Client** connects to the **API Gateway** (Nginx/Express).
-2. **Signaling Service** manages room creation and peer handshake via WebSockets.
-3. **Media Service (SFU)** routes encrypted WebRTC streams between participants without transcoding, ensuring 100ms-level latency.
+### 1. High-Level System Architecture
+This diagram shows how external traffic is routed through the Nginx gateway to internal microservices.
+
+```mermaid
+graph TD
+    User((User/Browser))
+    Nginx[Nginx Gateway :80]
+    UI[Next.js UI :3000]
+    Gateway[API Gateway :4000]
+    Signaling[Signaling Service :5000]
+    Media[Media Service SFU :6000]
+    DB[(PostgreSQL)]
+    Redis[(Redis Cache)]
+
+    User -->|HTTP/WS| Nginx
+    Nginx -->|/| UI
+    Nginx -->|/api| Gateway
+    Gateway -->|Forward| Signaling
+    Gateway -->|Forward| Media
+    
+    Signaling <-->|SQL| DB
+    Signaling <-->|State| Redis
+    Media <-->|REST| Signaling
+```
+
+### 2. Service Communication & Call Flow
+This diagram illustrates the handshake process when a user joins a room and starts media.
+
+```mermaid
+sequenceDiagram
+    participant C as Client (Browser)
+    participant S as Signaling Service
+    participant M as Media Service (SFU)
+    participant DB as PostgreSQL
+
+    C->>S: Join Room (Socket.io)
+    S->>DB: Check/Create Room
+    DB-->>S: Room Details
+    S->>M: Request Router RtpCapabilities
+    M-->>S: RtpCapabilities
+    S-->>C: Room Joined + Capabilities
+
+    Note over C,M: WebRTC Transport Negotiation
+    C->>S: Create WebRtcTransport
+    S->>M: Create Transport
+    M-->>S: Transport Params
+    S-->>C: Transport Params
+    
+    C->>M: DTLS/ICE Connection (UDP)
+    C->>S: Produce Media
+    S->>M: Create Producer
+    M-->>S: Producer ID
+    S-->>C: Producer ID
+    S->>C: Notify other peers (New Producer)
+```
+
+### 3. Media Stream Flow (SFU Logic)
+Unlike Mesh (P2P), the SFU (Selective Forwarding Unit) architecture routes media centrally.
+
+```mermaid
+graph LR
+    P1[Participant 1]
+    P2[Participant 2]
+    P3[Participant 3]
+    SFU{Mediasoup SFU}
+
+    P1 -->|Upload 1 Stream| SFU
+    SFU -->|Forward P1| P2
+    SFU -->|Forward P1| P3
+    
+    P2 -->|Upload 1 Stream| SFU
+    SFU -->|Forward P2| P1
+    SFU -->|Forward P2| P3
+```
 
 ---
 
