@@ -24,41 +24,35 @@ interface ParticipantTileProps {
 
 export const ParticipantTile = ({ userId, userName, videoTrack, audioTrack, screenTrack, isLocal, isPinned, isVideoPaused, isAudioPaused }: ParticipantTileProps) => {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const audioRef = useRef<HTMLAudioElement>(null);
     const setPinnedParticipant = useRoomStore((state) => state.setPinnedParticipant);
-    const pinnedId = useRoomStore((state) => state.pinnedParticipantId);
 
+    // Video Handling
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
 
         let isPlaying = true;
+        const updateVideo = async () => {
+            // Priority: Screen Track > Video Track
+            const track = screenTrack || (isVideoPaused ? undefined : videoTrack);
 
-        const updateStream = async () => {
-            const tracks: MediaStreamTrack[] = [];
-            // If screen sharing is active, show it. Otherwise show camera.
-            const primaryTrack = screenTrack || (isVideoPaused ? undefined : videoTrack);
-
-            if (primaryTrack) tracks.push(primaryTrack);
-            if (audioTrack) tracks.push(audioTrack);
-
-            if (tracks.length > 0) {
-                const stream = new MediaStream(tracks);
+            if (track) {
+                const stream = new MediaStream([track]);
 
                 if (video.srcObject instanceof MediaStream) {
-                    const currentTracks = video.srcObject.getTracks();
-                    // Check if tracks effectively changed
-                    const hasChanged = tracks.length !== currentTracks.length ||
-                        tracks.some((t, i) => t.id !== currentTracks[i]?.id);
-                    if (!hasChanged) return;
+                    const currentTrack = video.srcObject.getVideoTracks()[0];
+                    if (currentTrack?.id === track.id) return;
                 }
 
+                console.log(`[ParticipantTile ${userId}] Attaching VIDEO track: ${track.id}`);
                 video.srcObject = stream;
                 try {
                     await video.play();
+                    console.log(`[ParticipantTile ${userId}] video.play() SUCCESS`);
                 } catch (err: any) {
                     if (err.name !== 'AbortError' && isPlaying) {
-                        console.error('Video play error:', err);
-                        // If play failed, maybe retry or just log
+                        console.error(`[ParticipantTile ${userId}] video.play() FAILED:`, err.message);
                     }
                 }
             } else {
@@ -66,12 +60,45 @@ export const ParticipantTile = ({ userId, userName, videoTrack, audioTrack, scre
             }
         };
 
-        updateStream();
+        updateVideo();
+        return () => { isPlaying = false; };
+    }, [videoTrack, screenTrack, isVideoPaused, userId]);
 
-        return () => {
-            isPlaying = false;
+    // Audio Handling
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio || isLocal) return;
+
+        let isPlaying = true;
+        const updateAudio = async () => {
+            const track = isAudioPaused ? undefined : audioTrack;
+
+            if (track) {
+                const stream = new MediaStream([track]);
+
+                if (audio.srcObject instanceof MediaStream) {
+                    const currentTrack = audio.srcObject.getAudioTracks()[0];
+                    if (currentTrack?.id === track.id) return;
+                }
+
+                console.log(`[ParticipantTile ${userId}] Attaching AUDIO track: ${track.id}`);
+                audio.srcObject = stream;
+                try {
+                    await audio.play();
+                    console.log(`[ParticipantTile ${userId}] audio.play() SUCCESS`);
+                } catch (err: any) {
+                    if (err.name !== 'NotAllowedError' && isPlaying) {
+                        console.error(`[ParticipantTile ${userId}] audio.play() FAILED:`, err.message);
+                    }
+                }
+            } else {
+                audio.srcObject = null;
+            }
         };
-    }, [videoTrack, audioTrack, screenTrack, isVideoPaused]);
+
+        updateAudio();
+        return () => { isPlaying = false; };
+    }, [audioTrack, isAudioPaused, isLocal, userId]);
 
     const togglePin = () => {
         if (isPinned) {
@@ -89,11 +116,14 @@ export const ParticipantTile = ({ userId, userName, videoTrack, audioTrack, scre
             "group relative w-full h-full bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center transition-all duration-300 ring-2 ring-transparent bg-gradient-to-br from-slate-900 to-slate-800",
             isPinned && "ring-blue-500 shadow-xl"
         )}>
+            {/* Audio Element (Remote only) */}
+            {!isLocal && <audio ref={audioRef} autoPlay playsInline className="hidden" />}
+
             {showVideo ? (
                 <video
                     ref={videoRef}
                     autoPlay
-                    muted={isLocal} // Local user usually muted to self to avoid echo, but if audio is paused, track might be silent anyway.
+                    muted={true} // Always mute video to bypass Autoplay restrictions
                     playsInline
                     className={cn(
                         "w-full h-full object-cover transition-transform duration-500",

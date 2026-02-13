@@ -12,8 +12,25 @@ export default function Home() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomId.trim()) {
-      router.push(`/room/${roomId.trim()}`);
+    let id = roomId.trim();
+
+    // Extract roomId if a full URL was pasted
+    try {
+      if (id.startsWith('http')) {
+        const url = new URL(id);
+        const pathParts = url.pathname.split('/');
+        // Format is /room/[roomId]
+        const roomIdx = pathParts.indexOf('room');
+        if (roomIdx !== -1 && pathParts[roomIdx + 1]) {
+          id = pathParts[roomIdx + 1];
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to parse roomId as URL, using raw input');
+    }
+
+    if (id) {
+      router.push(`/room/${id}`);
     }
   };
 

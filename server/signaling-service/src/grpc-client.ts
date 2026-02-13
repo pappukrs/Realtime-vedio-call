@@ -1,9 +1,8 @@
-import * as grpc from '@grpc/grpc-js';
-import { getMediaDefinition, logger } from 'common';
+import { getMediaDefinition, logger, grpcLib as grpc } from 'common';
 import util from 'util';
 
 // @ts-ignore
-const mediaProto = getMediaDefinition().media;
+const mediaProto = (getMediaDefinition() as any).media;
 const MEDIA_SERVICE_GRPC_URL = process.env.MEDIA_SERVICE_GRPC_URL || 'media-service:50051';
 
 const client = new mediaProto.MediaService(
@@ -11,17 +10,17 @@ const client = new mediaProto.MediaService(
     grpc.credentials.createInsecure()
 );
 
-// Promisify client methods
+// Promisify client methods and export with PascalCase to match Proto definitions
 export const mediaGrpcClient = {
-    getRouterRtpCapabilities: util.promisify(client.GetRouterRtpCapabilities).bind(client),
-    createWebRtcTransport: util.promisify(client.CreateWebRtcTransport).bind(client),
-    connectWebRtcTransport: util.promisify(client.ConnectWebRtcTransport).bind(client),
-    produce: util.promisify(client.Produce).bind(client),
-    consume: util.promisify(client.Consume).bind(client),
-    resumeConsumer: util.promisify(client.ResumeConsumer).bind(client),
-    closeProducer: util.promisify(client.CloseProducer).bind(client),
-    pauseProducer: util.promisify(client.PauseProducer).bind(client),
-    resumeProducer: util.promisify(client.ResumeProducer).bind(client),
-    getProducers: util.promisify(client.GetProducers).bind(client),
-    cleanupUser: util.promisify(client.CleanupUser).bind(client),
+    GetRouterRtpCapabilities: util.promisify(client.GetRouterRtpCapabilities).bind(client),
+    CreateWebRtcTransport: util.promisify(client.CreateWebRtcTransport).bind(client),
+    ConnectWebRtcTransport: util.promisify(client.ConnectWebRtcTransport).bind(client),
+    Produce: util.promisify(client.Produce).bind(client),
+    Consume: util.promisify(client.Consume).bind(client),
+    ResumeConsumer: util.promisify(client.ResumeConsumer).bind(client),
+    CloseProducer: util.promisify(client.CloseProducer).bind(client),
+    PauseProducer: util.promisify(client.PauseProducer).bind(client),
+    ResumeProducer: util.promisify(client.ResumeProducer).bind(client),
+    GetProducers: util.promisify(client.GetProducers).bind(client),
+    CleanupUser: util.promisify(client.CleanupUser).bind(client),
 };

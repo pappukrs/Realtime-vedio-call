@@ -104,11 +104,19 @@ export const useMediasoup = (socket: Socket | null, roomId: string | null) => {
                         const audioTrack = localStream.getAudioTracks()[0];
 
                         if (videoTrack) {
-                            const videoProducer = await sendTransport.produce({ track: videoTrack, appData: { type: 'video' } });
+                            console.log('Producing video track...');
+                            const videoProducer = await sendTransport.produce({
+                                track: videoTrack,
+                                appData: { type: 'video', roomId }
+                            });
                             videoProducerRef.current = videoProducer;
                         }
                         if (audioTrack) {
-                            const audioProducer = await sendTransport.produce({ track: audioTrack, appData: { type: 'audio' } });
+                            console.log('Producing audio track...');
+                            const audioProducer = await sendTransport.produce({
+                                track: audioTrack,
+                                appData: { type: 'audio', roomId }
+                            });
                             audioProducerRef.current = audioProducer;
                         }
                     }
@@ -140,11 +148,13 @@ export const useMediasoup = (socket: Socket | null, roomId: string | null) => {
 
                             try {
                                 const consumer = await recvTransport.consume(consumeData.params);
+                                console.log(`Consume successful: id=${consumer.id}, kind=${consumer.kind}, producerId=${producerId}`);
                                 socket.emit('resumeConsumer', { consumerId: consumer.id });
 
                                 upsertParticipant(userId, { userId, isLocal: false });
 
                                 const trackType = appData?.type === 'screen' ? 'screen' : consumer.kind as any;
+                                console.log(`Categorizing track for user ${userId}: ${trackType} (appData.type: ${appData?.type})`);
                                 updateParticipantTracks(userId, trackType, consumer.track);
 
                                 // Handle validation for already paused producers
@@ -258,13 +268,17 @@ export const useMediasoup = (socket: Socket | null, roomId: string | null) => {
             // Simple constraints for maximum compatibility
             const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: true });
             const track = stream.getVideoTracks()[0];
+            console.log('Screen share track acquired:', track.label);
 
             const producer = await sendTransportRef.current.produce({
                 track,
-                appData: { type: 'screen' }
+                appData: { type: 'screen', roomId }
             });
 
+            console.log('Screen share producer created:', producer.id);
+
             screenProducerRef.current = producer;
+            updateParticipantTracks('local', 'screen', track);
             setIsScreenSharing(true);
             upsertParticipant('local', { screenTrack: track } as any);
 
@@ -282,12 +296,14 @@ export const useMediasoup = (socket: Socket | null, roomId: string | null) => {
 
     const stopScreenShare = () => {
         if (screenProducerRef.current) {
+            console.log('Stopping screen share producer:', screenProducerRef.current.id);
             screenProducerRef.current.close();
             socket?.emit('producerClosed', {
                 producerId: screenProducerRef.current.id,
                 roomId
             });
             screenProducerRef.current = null;
+            updateParticipantTracks('local', 'screen', undefined);
         }
         setIsScreenSharing(false);
         upsertParticipant('local', { screenTrack: undefined } as any);

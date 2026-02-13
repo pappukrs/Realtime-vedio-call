@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
-import { logger, pool } from 'common';
+import { logger, pool, register, registerService, httpRequestsTotal, httpRequestDuration } from 'common';
 import { handleWebRTC } from './handlers/webrtc.handler.js';
 import { handleRoom } from './handlers/room.handler.js';
 
@@ -41,6 +41,26 @@ initDB();
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
+});
+
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+});
+
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = (Date.now() - start) / 1000;
+        const labels = {
+            method: req.method,
+            path: req.path,
+            status: res.statusCode.toString(),
+        };
+        httpRequestsTotal.inc(labels);
+        httpRequestDuration.observe(labels, duration);
+    });
+    next();
 });
 
 app.post('/rooms', async (req, res) => {
@@ -81,6 +101,7 @@ io.on('connection', (socket) => {
     });
 });
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
     logger.info(`Signaling Service running on port ${PORT}`);
+    await registerService('signaling-service', Number(PORT));
 });

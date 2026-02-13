@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import dotenv from 'dotenv';
+import { register, registerService, httpRequestsTotal, httpRequestDuration } from 'common';
 
 dotenv.config();
 
@@ -18,6 +19,28 @@ app.use(express.json());
 // Health Check
 app.get('/health', (req, res) => {
     res.json({ status: 'API Gateway is healthy' });
+});
+
+// Prometheus Metrics Endpoint
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+});
+
+// Middleware to track HTTP requests
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = (Date.now() - start) / 1000;
+        const labels = {
+            method: req.method,
+            path: req.path,
+            status: res.statusCode.toString(),
+        };
+        httpRequestsTotal.inc(labels);
+        httpRequestDuration.observe(labels, duration);
+    });
+    next();
 });
 
 // Proxy routes to internal services
@@ -43,6 +66,7 @@ app.use('/api/rooms', createProxyMiddleware({
     },
 }));
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`API Gateway running on port ${PORT}`);
+    await registerService('api-gateway', Number(PORT));
 });

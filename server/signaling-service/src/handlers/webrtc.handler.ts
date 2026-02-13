@@ -5,7 +5,7 @@ import { mediaGrpcClient } from '../grpc-client.js';
 export const handleWebRTC = (socket: Socket, io: Server) => {
     socket.on('getRouterRtpCapabilities', async ({ roomId }, callback) => {
         try {
-            const response: any = await mediaGrpcClient.getRouterRtpCapabilities({ roomId });
+            const response: any = await mediaGrpcClient.GetRouterRtpCapabilities({ roomId });
             callback({ rtpCapabilities: JSON.parse(response.rtpCapabilities) });
         } catch (error: any) {
             logger.error('getRouterRtpCapabilities error:', error.message);
@@ -15,7 +15,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('createWebRtcTransport', async ({ roomId, direction }, callback) => {
         try {
-            const response: any = await mediaGrpcClient.createWebRtcTransport({ roomId, direction });
+            const response: any = await mediaGrpcClient.CreateWebRtcTransport({ roomId, direction });
             callback({ params: JSON.parse(response.params) });
         } catch (error: any) {
             logger.error('createWebRtcTransport error:', error.message);
@@ -25,7 +25,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('connectWebRtcTransport', async ({ transportId, dtlsParameters }, callback) => {
         try {
-            await mediaGrpcClient.connectWebRtcTransport({
+            await mediaGrpcClient.ConnectWebRtcTransport({
                 transportId,
                 dtlsParameters: JSON.stringify(dtlsParameters)
             });
@@ -40,21 +40,27 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
         try {
             const enrichedAppData = { ...appData, userId: socket.id };
 
-            const response: any = await mediaGrpcClient.produce({
+            const response: any = await mediaGrpcClient.Produce({
                 transportId,
                 kind,
                 rtpParameters: JSON.stringify(rtpParameters),
                 appData: JSON.stringify(enrichedAppData)
             });
 
+            logger.info(`Producer ${response.id} (${kind}) created for user ${socket.id} in room ${appData.roomId}`);
             callback({ id: response.id });
 
             // Broadcast new producer to others in room
-            socket.to(appData.roomId).emit('newProducer', {
-                producerId: response.id,
-                userId: socket.id,
-                appData: enrichedAppData
-            });
+            if (appData.roomId) {
+                logger.info(`Broadcasting newProducer ${response.id} to room ${appData.roomId}`);
+                socket.to(appData.roomId).emit('newProducer', {
+                    producerId: response.id,
+                    userId: socket.id,
+                    appData: enrichedAppData
+                });
+            } else {
+                logger.warn(`Cannot broadcast newProducer ${response.id}: roomId is missing in appData`);
+            }
         } catch (error: any) {
             logger.error('produce error:', error.message);
             callback({ error: error.message });
@@ -63,7 +69,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('consume', async ({ roomId, transportId, producerId, rtpCapabilities }, callback) => {
         try {
-            const response: any = await mediaGrpcClient.consume({
+            const response: any = await mediaGrpcClient.Consume({
                 roomId,
                 transportId,
                 producerId,
@@ -78,7 +84,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('resumeConsumer', async ({ consumerId }, callback) => {
         try {
-            await mediaGrpcClient.resumeConsumer({ consumerId });
+            await mediaGrpcClient.ResumeConsumer({ consumerId });
             if (callback) callback();
         } catch (error: any) {
             logger.error('resumeConsumer error:', error.message);
@@ -88,7 +94,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('getProducers', async ({ roomId }, callback) => {
         try {
-            const response: any = await mediaGrpcClient.getProducers({ roomId });
+            const response: any = await mediaGrpcClient.GetProducers({ roomId });
             if (callback) callback({ producers: JSON.parse(response.producers) || [] });
         } catch (error: any) {
             logger.error('getProducers error:', error.message);
@@ -98,7 +104,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('producerClosed', async ({ producerId, roomId }) => {
         try {
-            await mediaGrpcClient.closeProducer({ producerId, roomId });
+            await mediaGrpcClient.CloseProducer({ producerId, roomId });
             if (roomId) {
                 socket.to(roomId).emit('producerClosed', {
                     producerId,
@@ -112,7 +118,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('pauseProducer', async ({ producerId, roomId, kind }) => {
         try {
-            await mediaGrpcClient.pauseProducer({ producerId, roomId });
+            await mediaGrpcClient.PauseProducer({ producerId, roomId });
             // Explicitly broadcast to others with kind
             if (roomId) {
                 socket.to(roomId).emit('producerPaused', { producerId, userId: socket.id, kind });
@@ -124,7 +130,7 @@ export const handleWebRTC = (socket: Socket, io: Server) => {
 
     socket.on('resumeProducer', async ({ producerId, roomId, kind }) => {
         try {
-            await mediaGrpcClient.resumeProducer({ producerId, roomId });
+            await mediaGrpcClient.ResumeProducer({ producerId, roomId });
             // Explicitly broadcast to others with kind
             if (roomId) {
                 socket.to(roomId).emit('producerResumed', { producerId, userId: socket.id, kind });

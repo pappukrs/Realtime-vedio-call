@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { createWorkers, createRouter } from './worker.js';
 import { createWebRtcTransport } from './transport.js';
-import { logger } from 'common';
+import { logger, register, registerService, httpRequestsTotal, httpRequestDuration } from 'common';
 import { startGrpcServer } from './grpc-server.js';
 
 const app = express();
@@ -17,14 +17,29 @@ const transports = new Map<string, any>();
 const producers = new Map<string, any>();
 const consumers = new Map<string, any>();
 
-// Initialize Mediasoup workers
-createWorkers().then(() => {
-    logger.info('Mediasoup workers created');
-}).catch(err => {
-    logger.error('Failed to create mediasoup workers:', err);
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = (Date.now() - start) / 1000;
+        const labels = {
+            method: req.method,
+            path: req.path,
+            status: res.statusCode.toString(),
+        };
+        httpRequestsTotal.inc(labels);
+        httpRequestDuration.observe(labels, duration);
+    });
+    next();
+});
+
+// --- REST API Endpoints ---
 
 app.post('/rooms/:roomId/router-capabilities', async (req, res) => {
     const { roomId } = req.params;
@@ -87,7 +102,6 @@ app.post('/transports/:id/produce', async (req, res) => {
         const producer = await transport.produce({ kind, rtpParameters, appData });
         producers.set(producer.id, producer);
 
-        // Store producer in the room's producer map with userId from appData
         const room = rooms.get(appData.roomId);
         if (room) {
             room.producers.set(producer.id, {
@@ -103,18 +117,14 @@ app.post('/transports/:id/produce', async (req, res) => {
     }
 });
 
-// GET all producers for a room (used by late joiners via getProducers)
 app.get('/rooms/:roomId/producers', (req, res) => {
     const { roomId } = req.params;
     try {
         const room = rooms.get(roomId);
-        if (!room) {
-            return res.json({ producers: [] });
-        }
+        if (!room) return res.json({ producers: [] });
 
-        const producerList: { producerId: string; userId: string; appData: any }[] = [];
+        const producerList: any[] = [];
         for (const [producerId, data] of room.producers.entries()) {
-            // Only include active (non-closed) producers
             if (!data.producer.closed) {
                 producerList.push({
                     producerId,
@@ -123,7 +133,6 @@ app.get('/rooms/:roomId/producers', (req, res) => {
                 });
             }
         }
-
         res.json({ producers: producerList });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -138,9 +147,7 @@ app.post('/rooms/:roomId/consume', async (req, res) => {
         const transport = transports.get(transportId);
         const producer = producers.get(producerId);
 
-        if (!room || !transport || !producer) {
-            return res.status(404).json({ error: 'Resource not found' });
-        }
+        if (!room || !transport || !producer) return res.status(404).json({ error: 'Resource not found' });
 
         if (!room.router.canConsume({ producerId: producer.id, rtpCapabilities })) {
             return res.status(400).json({ error: 'Cannot consume' });
@@ -186,8 +193,6 @@ app.post('/producers/:id/close', (req, res) => {
         if (producer) {
             producer.close();
             producers.delete(id);
-
-            // Also remove from room's producer map
             for (const [, room] of rooms.entries()) {
                 if (room.producers.has(id)) {
                     room.producers.delete(id);
@@ -230,7 +235,6 @@ app.post('/rooms/:roomId/users/:userId/cleanup', (req, res) => {
     try {
         const room = rooms.get(roomId);
         if (room) {
-            // Find and close producers for this user
             const toDelete: string[] = [];
             for (const [id, data] of room.producers.entries()) {
                 if (data.userId === userId) {
@@ -247,11 +251,6 @@ app.post('/rooms/:roomId/users/:userId/cleanup', (req, res) => {
     }
 });
 
-// --- REST API Server ---
-app.listen(PORT, () => {
-    logger.info(`Media Service REST API running on port ${PORT}`);
-});
-
 // --- gRPC Server Implementation ---
 const grpcHandlers = {
     GetRouterRtpCapabilities: async (call: any, callback: any) => {
@@ -265,6 +264,7 @@ const grpcHandlers = {
             }
             callback(null, { rtpCapabilities: JSON.stringify(room.router.rtpCapabilities) });
         } catch (error: any) {
+            logger.error(`GetRouterRtpCapabilities error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -287,6 +287,7 @@ const grpcHandlers = {
                 })
             });
         } catch (error: any) {
+            logger.error(`CreateWebRtcTransport error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -299,6 +300,7 @@ const grpcHandlers = {
             await transport.connect({ dtlsParameters: JSON.parse(dtlsParameters) });
             callback(null, {});
         } catch (error: any) {
+            logger.error(`ConnectWebRtcTransport error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -315,10 +317,16 @@ const grpcHandlers = {
                 rtpParameters: JSON.parse(rtpParameters),
                 appData: parsedAppData
             });
+
+            producer.on('score', (score: any) => {
+                logger.info(`Producer ${producer.id} score:`, score);
+            });
+
             producers.set(producer.id, producer);
 
             const room = rooms.get(parsedAppData.roomId);
             if (room) {
+                logger.info(`Producer added to room ${parsedAppData.roomId}: ${producer.id} (type: ${parsedAppData.type})`);
                 room.producers.set(producer.id, {
                     producer,
                     userId: parsedAppData.userId || 'unknown',
@@ -328,6 +336,7 @@ const grpcHandlers = {
 
             callback(null, { id: producer.id });
         } catch (error: any) {
+            logger.error(`Produce error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -354,6 +363,14 @@ const grpcHandlers = {
                 paused: true,
             });
 
+            consumer.on('producerpause', () => {
+                logger.info(`Producer paused, pausing consumer ${consumer.id}`);
+            });
+
+            consumer.on('producerresume', () => {
+                logger.info(`Producer resumed, resuming consumer ${consumer.id}`);
+            });
+
             consumers.set(consumer.id, consumer);
 
             callback(null, {
@@ -362,9 +379,12 @@ const grpcHandlers = {
                     producerId: producer.id,
                     kind: consumer.kind,
                     rtpParameters: consumer.rtpParameters,
+                    type: consumer.type,
+                    appData: consumer.appData,
                 })
             });
         } catch (error: any) {
+            logger.error(`Consume error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -373,10 +393,15 @@ const grpcHandlers = {
         const { consumerId } = call.request;
         try {
             const consumer = consumers.get(consumerId);
-            if (!consumer) return callback({ code: 5, message: 'Consumer not found' });
+            if (!consumer) {
+                logger.warn(`ResumeConsumer: Consumer ${consumerId} not found`);
+                return callback({ code: 5, message: 'Consumer not found' });
+            }
             await consumer.resume();
+            logger.info(`Consumer resumed: ${consumerId} (kind: ${consumer.kind})`);
             callback(null, {});
         } catch (error: any) {
+            logger.error(`ResumeConsumer error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -397,6 +422,7 @@ const grpcHandlers = {
             }
             callback(null, {});
         } catch (error: any) {
+            logger.error(`CloseProducer error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -409,6 +435,7 @@ const grpcHandlers = {
             await producer.pause();
             callback(null, {});
         } catch (error: any) {
+            logger.error(`PauseProducer error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -421,6 +448,7 @@ const grpcHandlers = {
             await producer.resume();
             callback(null, {});
         } catch (error: any) {
+            logger.error(`ResumeProducer error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -429,11 +457,9 @@ const grpcHandlers = {
         const { roomId } = call.request;
         try {
             const room = rooms.get(roomId);
-            if (!room) {
-                return callback(null, { producers: JSON.stringify([]) });
-            }
+            if (!room) return callback(null, { producers: JSON.stringify([]) });
 
-            const producerList: { producerId: string; userId: string; appData: any }[] = [];
+            const producerList: any[] = [];
             for (const [producerId, data] of room.producers.entries()) {
                 if (!data.producer.closed) {
                     producerList.push({
@@ -445,6 +471,7 @@ const grpcHandlers = {
             }
             callback(null, { producers: JSON.stringify(producerList) });
         } catch (error: any) {
+            logger.error(`GetProducers error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     },
@@ -466,9 +493,28 @@ const grpcHandlers = {
             }
             callback(null, {});
         } catch (error: any) {
+            logger.error(`CleanupUser error: ${error.message}`);
             callback({ code: 5, message: error.message });
         }
     }
 };
 
-startGrpcServer(grpcHandlers);
+const start = async () => {
+    try {
+        logger.info('Initializing Media Service...');
+        await createWorkers();
+        logger.info('Mediasoup workers created');
+
+        app.listen(PORT, async () => {
+            logger.info(`Media Service REST API running on port ${PORT}`);
+            await registerService('media-service', Number(PORT));
+        });
+
+        startGrpcServer(grpcHandlers);
+    } catch (err: any) {
+        logger.error(`Failed to start Media Service: ${err.message}`);
+        process.exit(1);
+    }
+};
+
+start();

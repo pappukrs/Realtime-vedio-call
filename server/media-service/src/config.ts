@@ -8,14 +8,37 @@ export const config = {
     mediasoup: {
         worker: {
             rtcMinPort: 40000,
-            rtcMaxPort: 49999,
-            logLevel: (process.env.MEDIASOUP_LOG_LEVEL || 'debug') as any,
+            rtcMaxPort: 40100,
+            logLevel: (process.env.MEDIASOUP_LOG_LEVEL || 'info') as any,
             logTags: ['info', 'ice', 'dtls', 'rtp', 'srtp', 'rtcp'] as any[],
         },
         router: {
             mediaCodecs: [
-                { kind: 'audio', mimeType: 'audio/opus', clockRate: 48000, channels: 2 },
-                { kind: 'video', mimeType: 'video/VP8', clockRate: 90000, parameters: { 'x-google-start-bitrate': 1000 } },
+                {
+                    kind: 'audio',
+                    mimeType: 'audio/opus',
+                    clockRate: 48000,
+                    channels: 2
+                },
+                {
+                    kind: 'video',
+                    mimeType: 'video/VP8',
+                    clockRate: 90000,
+                    parameters: {
+                        'x-google-start-bitrate': 1000
+                    }
+                },
+                {
+                    kind: 'video',
+                    mimeType: 'video/H264',
+                    clockRate: 90000,
+                    parameters: {
+                        'packetization-mode': 1,
+                        'profile-level-id': '42e01f',
+                        'level-asymmetry-allowed': 1,
+                        'x-google-start-bitrate': 1000
+                    }
+                }
             ] as any[],
         },
         webRtcTransport: {

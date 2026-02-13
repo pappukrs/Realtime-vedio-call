@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, MicOff, Video, VideoOff, PhoneOff, LayoutGrid, Maximize2, MoreVertical, MessageSquare, Users, Monitor, MonitorOff } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, LayoutGrid, Maximize2, MoreVertical, MessageSquare, Users, Monitor, MonitorOff, Link, Check } from 'lucide-react';
 import { useState } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -40,7 +40,16 @@ export const Controls = ({
     const toggleLayout = useRoomStore((state) => state.toggleLayout);
     const layout = useRoomStore((state) => state.layout);
     const participantsMap = useRoomStore((state) => state.participants);
+    const roomId = useRoomStore((state) => state.roomId);
     const participantCount = participantsMap.size;
+    const [copied, setCopied] = useState(false);
+
+    const copyLink = () => {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     return (
         <div className="h-24 bg-white border-t border-slate-200 px-6 flex items-center justify-between shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]">
@@ -102,6 +111,12 @@ export const Controls = ({
             {/* Right side utils */}
             <div className="hidden md:flex items-center justify-end gap-2 w-1/4">
                 <UtilBtn
+                    icon={copied ? <Check className="w-5 h-5 text-green-500" /> : <Link className="w-5 h-5" />}
+                    onClick={copyLink}
+                    active={copied}
+                    label={copied ? "Copied!" : "Copy Joining Link"}
+                />
+                <UtilBtn
                     icon={
                         <div className="relative">
                             <Users className="w-5 h-5" />
@@ -147,9 +162,10 @@ const ControlBtn = ({ active, onClick, icon, danger, className, label }: any) =>
     </button>
 );
 
-const UtilBtn = ({ icon, onClick, active }: any) => (
+const UtilBtn = ({ icon, onClick, active, label }: any) => (
     <button
         onClick={onClick}
+        title={label}
         className={cn(
             "p-3 rounded-xl transition-all",
             active

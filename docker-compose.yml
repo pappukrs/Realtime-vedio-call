@@ -26,9 +26,11 @@ services:
       - PORT=4000
       - DATABASE_URL=postgresql://user:pass@postgres:5432/videocall
       - REDIS_URL=redis://redis:6379
+      - CONSUL_HOST=consul
     depends_on:
       - postgres
       - redis
+      - consul
 
   media-service:
     build:
@@ -44,9 +46,13 @@ services:
       - GRPC_PORT=50051
       - DATABASE_URL=postgresql://user:pass@postgres:5432/videocall
       - REDIS_URL=redis://redis:6379
+      - CONSUL_HOST=consul
+      - MEDIASOUP_LISTEN_IP=0.0.0.0
+      - MEDIASOUP_ANNOUNCED_IP=127.0.0.1
     depends_on:
       - postgres
       - redis
+      - consul
 
   signaling-service:
     build:
@@ -60,10 +66,12 @@ services:
       - MEDIA_SERVICE_GRPC_URL=media-service:50051
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql://user:pass@postgres:5432/videocall
+      - CONSUL_HOST=consul
     depends_on:
       - redis
       - postgres
       - media-service
+      - consul
 
   ui:
     build:
@@ -84,6 +92,35 @@ services:
     depends_on:
       - api-gateway
       - ui
+
+  consul:
+    image: hashicorp/consul:1.15
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    command: "agent -dev -client=0.0.0.0"
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api-gateway
+      - media-service
+      - signaling-service
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:

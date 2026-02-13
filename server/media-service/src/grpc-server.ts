@@ -1,8 +1,7 @@
-import * as grpc from '@grpc/grpc-js';
-import { getMediaDefinition, logger } from 'common';
+import { getMediaDefinition, logger, grpcLib as grpc } from 'common';
 
 // @ts-ignore
-const mediaProto = getMediaDefinition().media;
+const mediaProto = (getMediaDefinition() as any).media;
 
 export const startGrpcServer = (implementations: any) => {
     const server = new grpc.Server();
