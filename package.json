@@ -4,8 +4,8 @@
   "description": "WhatsApp-style video calling system built for scale, performance, and reliability.",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "server/*",
+    "ui/*"
   ],
   "scripts": {
     "dev": "turbo dev",
