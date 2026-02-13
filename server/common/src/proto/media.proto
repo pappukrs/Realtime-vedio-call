@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package media;
+
+service MediaService {
+  rpc GetRouterRtpCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
+  rpc CreateWebRtcTransport(CreateTransportRequest) returns (CreateTransportResponse);
+  rpc ConnectWebRtcTransport(ConnectTransportRequest) returns (Empty);
+  rpc Produce(ProduceRequest) returns (ProduceResponse);
+  rpc Consume(ConsumeRequest) returns (ConsumeResponse);
+  rpc ResumeConsumer(ConsumerRequest) returns (Empty);
+  rpc CloseProducer(ProducerRequest) returns (Empty);
+  rpc PauseProducer(ProducerRequest) returns (Empty);
+  rpc ResumeProducer(ProducerRequest) returns (Empty);
+  rpc GetProducers(GetProducersRequest) returns (GetProducersResponse);
+  rpc CleanupUser(CleanupRequest) returns (Empty);
+}
+
+message GetProducersRequest {
+  string roomId = 1;
+}
+
+message GetProducersResponse {
+  string producers = 1; // JSON string
+}
+
+message GetCapabilitiesRequest {
+  string roomId = 1;
+}
+
+message GetCapabilitiesResponse {
+  string rtpCapabilities = 1; // JSON string
+}
+
+message CreateTransportRequest {
+  string roomId = 1;
+  string direction = 2;
+}
+
+message CreateTransportResponse {
+  string params = 1; // JSON string
+}
+
+message ConnectTransportRequest {
+  string transportId = 1;
+  string dtlsParameters = 2; // JSON string
+}
+
+message ProduceRequest {
+  string transportId = 1;
+  string kind = 2;
+  string rtpParameters = 3; // JSON string
+  string appData = 4; // JSON string
+}
+
+message ProduceResponse {
+  string id = 1;
+}
+
+message ConsumeRequest {
+  string roomId = 1;
+  string transportId = 2;
+  string producerId = 3;
+  string rtpCapabilities = 4; // JSON string
+}
+
+message ConsumeResponse {
+  string params = 1; // JSON string
+}
+
+message ConsumerRequest {
+  string consumerId = 1;
+}
+
+message ProducerRequest {
+  string producerId = 1;
+  string roomId = 2;
+}
+
+message CleanupRequest {
+  string roomId = 1;
+  string userId = 2;
+}
+
+message Empty {}

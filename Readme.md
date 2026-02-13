@@ -8,8 +8,8 @@ A professional-grade, microservices-based video conferencing platform built with
 
 The system is built on a distributed microservices model to ensure scalability and separation of concerns.
 
-### 1. High-Level System Architecture
-This diagram shows how external traffic is routed through the Nginx gateway to internal microservices.
+### 1. High-Level System Architecture (gRPC Powered)
+This diagram shows how external traffic is routed through the Nginx gateway and how internal services communicate via **gRPC**.
 
 ```mermaid
 graph TD
@@ -30,12 +30,17 @@ graph TD
     
     Signaling <-->|SQL| DB
     Signaling <-->|State| Redis
-    Media <-->|REST| Signaling
+    Signaling <-->|gRPC :50051| Media
 ```
 
-### 2. Service Communication & Call Flow
-This diagram illustrates the handshake process when a user joins a room and starts media.
+### 2. Internal Communication: REST vs gRPC
+| Feature | Direct REST (Old) | gRPC (Current) |
+|---------------|---------------|-----------|
+| **Signaling ↔ Media** | HTTP POST (20-50ms) | gRPC (2-5ms) |
+| **Serialization** | JSON (Slow/Bulky) | Protobuf (Fast/Compact) |
+| **Type Safety** | Runtime only | Compile-time (Proto) |
 
+### 3. Service Communication & Call Flow
 ```mermaid
 sequenceDiagram
     participant C as Client (Browser)
@@ -45,129 +50,45 @@ sequenceDiagram
 
     C->>S: Join Room (Socket.io)
     S->>DB: Check/Create Room
-    DB-->>S: Room Details
-    S->>M: Request Router RtpCapabilities
-    M-->>S: RtpCapabilities
+    S->>M: gRPC: GetRouterCapabilities
+    M-->>S: rtpCapabilities
     S-->>C: Room Joined + Capabilities
 
     Note over C,M: WebRTC Transport Negotiation
     C->>S: Create WebRtcTransport
-    S->>M: Create Transport
-    M-->>S: Transport Params
-    S-->>C: Transport Params
+    S->>M: gRPC: CreateTransport
+    M-->>S: params
+    S-->>C: params
     
-    C->>M: DTLS/ICE Connection (UDP)
+    C->>M: DTLS/ICE Connection (UDP: 40000-40100)
     C->>S: Produce Media
-    S->>M: Create Producer
-    M-->>S: Producer ID
-    S-->>C: Producer ID
-    S->>C: Notify other peers (New Producer)
-```
-
-### 3. Media Stream Flow (SFU Logic)
-Unlike Mesh (P2P), the SFU (Selective Forwarding Unit) architecture routes media centrally.
-
-```mermaid
-graph LR
-    P1[Participant 1]
-    P2[Participant 2]
-    P3[Participant 3]
-    SFU{Mediasoup SFU}
-
-    P1 -->|Upload 1 Stream| SFU
-    SFU -->|Forward P1| P2
-    SFU -->|Forward P1| P3
-    
-    P2 -->|Upload 1 Stream| SFU
-    SFU -->|Forward P2| P1
-    SFU -->|Forward P2| P3
+    S->>M: gRPC: Produce
+    M-->>S: producerId
+    S-->>C: producerId
+    S->>C: Notify other peers (newProducer)
 ```
 
 ---
 
-## 🛠️ Backend Services
+## 🚀 Phased Production Roadmap
 
-### 1. API Gateway (`server/api-gateway`)
-- **Use Case**: Single entry point for the frontend.
-- **Problem Solved**: Prevents exposing internal service ports; handles CORS, rate limiting, and unified routing.
-- **Tech**: Node.js, Express, `http-proxy-middleware`.
+I have structured the evolution of this product into three clear phases:
 
-### 2. Signaling Service (`server/signaling-service`)
-- **Use Case**: Room management and WebRTC negotiation.
-- **Problem Solved**: Enables peers to find each other and exchange SDP/ICE candidates before the media starts flowing.
-- **Database**: 
-    - **PostgreSQL**: Stores persistent room data (Room IDs, timestamps).
-    - **Redis (Future)**: Used for horizontal scaling of Socket.io nodes.
-- **Communication**: Communicates with the **Media Service** via Internal REST APIs to provision transports.
+### **Phase 1: Performance & Reliability (Current)**
+- [x] **gRPC Migration**: Internal service communication migrated to gRPC for low-latency negotiation.
+- [x] **Explicit Signaling**: Improved video/audio toggle reflection via server-side broadcasting.
+- [x] **SFU Stability**: Fine-tuned Mediasoup worker configuration.
 
-### 3. Media Service (`server/media-service`)
-- **Use Case**: Selective Forwarding Unit (SFU).
-- **Problem Solved**: Instead of Mesh (P2P), which fails at 3+ participants, the SFU receives 1 stream per user and forwards it to N-1 users, drastically reducing client-side bandwidth.
-- **Tech**: `mediasoup`, Node.js.
+### **Phase 2: Hardening & Global Access (Soon)**
+- [ ] **STUN/TURN Cluster**: Deploy **Coturn** servers to bypass symmetric NATs (essential for mobile/corporate networks).
+- [ ] **JWT Auth**: Secure every API and Socket.io connection with signed tokens.
+- [ ] **Health Monitoring**: Advanced health checks and circuit breakers for gRPC calls.
 
----
-
-## 💾 Database Architecture
-
-- **PostgreSQL**: 
-    - Centrally managed for the `signaling-service`.
-    - Schema: `rooms` table tracks active sessions.
-- **Communication**: Services connect via standard connection strings (managed via Docker environment variables).
-- **Initialization**: Database tables are automatically initialized on service startup using the `common` library's pool manager.
-
----
-
-## 🎨 Frontend Architecture
-
-Built with **Next.js 14**, the frontend is designed for high performance and reactive state management.
-
-### Key Components:
-- **`useMediasoup` Hook**: The "brain" of the client. It handles:
-    - Device loading (capturing capabilities).
-    - Transport creation (Send/Recv).
-    - Producer management (Mic/Camera/Screen).
-    - Consumer management (Receiving others' streams).
-- **Zustand Store**: Manages global participant state, ensuring the UI reacts instantly to join/leave events.
-- **Tailwind CSS**: Provides a premium, "Glassmorphism" styled interface.
-
----
-
-## 🚀 Running the Project
-
-### Prerequisites
-- Docker & Docker Compose
-
-### Start the entire stack
-```bash
-docker-compose up --build
-```
-- **Web UI**: [http://localhost:3000](http://localhost:3000)
-- **API Gateway**: [http://localhost:4000](http://localhost:4000)
-
----
-
-## 📈 Roadmap for Production-Grade Scaling (Millions of Users)
-
-To transition this from a dev environment to a production-ready system, the following improvements are recommended:
-
-1. **Infrastructure & Orchestration**:
-   - **Kubernetes (EKS/GKE)**: Deploy services as pods with Horizontal Pod Autoscalers (HPA).
-   - **TURN Servers**: Deploy **Coturn** clusters to ensure 100% connectivity for users behind symmetric NATs or corporate firewalls.
-
-2. **Media Scaling**:
-   - **Mediasoup Worker Scaling**: Distribute Mediasoup workers across multiple CPU cores (currently limited to one in basic configs).
-   - **Pipe Transports**: Implement Mediasoup "Pipe Transports" to allow participants in the same room to be served by different servers (Inter-server media routing).
-
-3. **State Management**:
-   - **Redis Pub/Sub**: Essential for `signaling-service` to broadcast events across multiple instances.
-
-4. **Security**:
-   - **JWT Authentication**: Secure the Room API and Socket.io connections.
-   - **SRTP Encryption**: Ensure DTLS/SRTP is strictly enforced at the worker level.
-
-5. **Observability**:
-   - **Prometheus & Grafana**: Monitor Mediasoup worker load, jitter, and packet loss.
-   - **ELK Stack/Loki**: For centralized logging across all microservices.
+### **Phase 3: Scaling to Millions (Growth)**
+- [ ] **Multi-Core SFU**: Distribute Mediasoup workers across all available CPU cores.
+- [ ] **Redis Pub/Sub**: Enable multi-instance Signaling services for global scale.
+- [ ] **Pipe Transports**: Implement inter-server media routing for very large rooms.
+- [ ] **Observability**: Prometheus/Grafana dashboards for real-time jitter and packet loss monitoring.
 
 ---
 

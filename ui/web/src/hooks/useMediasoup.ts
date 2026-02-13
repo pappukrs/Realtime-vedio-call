@@ -190,7 +190,21 @@ export const useMediasoup = (socket: Socket | null, roomId: string | null) => {
                         removeParticipant(userId);
                     });
 
-                    // Listen for producer closed events from other peers (e.g. screen share stopped)
+                    // Explicit signaling for video/audio toggles
+                    socket.on('producerPaused', ({ producerId, userId, kind }: { producerId: string; userId: string; kind: 'video' | 'audio' }) => {
+                        console.log(`🔇 ${kind} paused by peer:`, userId);
+                        if (kind === 'video' || kind === 'audio') {
+                            updateParticipantPausedState(userId, kind, true);
+                        }
+                    });
+
+                    socket.on('producerResumed', ({ producerId, userId, kind }: { producerId: string; userId: string; kind: 'video' | 'audio' }) => {
+                        console.log(`🔊 ${kind} resumed by peer:`, userId);
+                        if (kind === 'video' || kind === 'audio') {
+                            updateParticipantPausedState(userId, kind, false);
+                        }
+                    });
+
                     socket.on('producerClosed', ({ producerId, userId }: { producerId: string; userId: string }) => {
                         console.log('🔴 Producer closed:', { producerId, userId });
                         consumersRef.current.delete(producerId);
@@ -288,12 +302,12 @@ export const useMediasoup = (socket: Socket | null, roomId: string | null) => {
                 if (isMicOn) {
                     // Mute: Pause producer
                     audioProducerRef.current.pause();
-                    socket?.emit('pauseProducer', { producerId: audioProducerRef.current.id, roomId });
+                    socket?.emit('pauseProducer', { producerId: audioProducerRef.current.id, roomId, kind: 'audio' });
                     updateParticipantPausedState('local', 'audio', true);
                 } else {
                     // Unmute: Resume producer
                     audioProducerRef.current.resume();
-                    socket?.emit('resumeProducer', { producerId: audioProducerRef.current.id, roomId });
+                    socket?.emit('resumeProducer', { producerId: audioProducerRef.current.id, roomId, kind: 'audio' });
                     updateParticipantPausedState('local', 'audio', false);
                 }
 
@@ -311,12 +325,12 @@ export const useMediasoup = (socket: Socket | null, roomId: string | null) => {
                 if (isVideoOn) {
                     // Disable video: Pause producer
                     videoProducerRef.current.pause();
-                    socket?.emit('pauseProducer', { producerId: videoProducerRef.current.id, roomId });
+                    socket?.emit('pauseProducer', { producerId: videoProducerRef.current.id, roomId, kind: 'video' });
                     updateParticipantPausedState('local', 'video', true);
                 } else {
                     // Enable video: Resume producer
                     videoProducerRef.current.resume();
-                    socket?.emit('resumeProducer', { producerId: videoProducerRef.current.id, roomId });
+                    socket?.emit('resumeProducer', { producerId: videoProducerRef.current.id, roomId, kind: 'video' });
                     updateParticipantPausedState('local', 'video', false);
                 }
 
