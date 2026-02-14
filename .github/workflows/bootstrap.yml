@@ -1,0 +1,40 @@
+name: 1. Infra Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_name:
+        description: 'Name of the GCS bucket for Terraform state'
+        required: true
+        default: 'terraform-live-call-state'
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Enable GCP Services
+        run: |
+          gcloud services enable compute.googleapis.com
+          gcloud services enable iam.googleapis.com
+          gcloud services enable cloudresourcemanager.googleapis.com
+
+      - name: Create GCS Bucket for State
+        run: |
+          if ! gsutil ls -b gs://${{ github.event.inputs.bucket_name }} >/dev/null 2>&1; then
+            gsutil mb -l ${{ vars.GCP_REGION || 'us-central1' }} gs://${{ github.event.inputs.bucket_name }}
+            gsutil versioning set on gs://${{ github.event.inputs.bucket_name }}
+            echo "✅ Bucket created: ${{ github.event.inputs.bucket_name }}"
+          else
+            echo "ℹ️ Bucket already exists: ${{ github.event.inputs.bucket_name }}"
+          fi

@@ -1,0 +1,43 @@
+name: 5. Auto Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  check-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform -chdir=infra init
+
+      - name: Check Infrastructure
+        id: check
+        continue-on-error: true
+        run: bash scripts/check-infra.sh
+
+      - name: Setup SSH Key
+        if: steps.check.outcome == 'success'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Run Deployment Script
+        if: steps.check.outcome == 'success'
+        run: bash scripts/deploy.sh
+        
+      - name: Skip Deployment
+        if: steps.check.outcome != 'success'
+        run: echo "⚠️ Infrastructure not active. Skipping deployment."
