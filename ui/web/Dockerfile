@@ -7,8 +7,13 @@ RUN npm install
 
 COPY . .
 
-# NEXT_PUBLIC_ vars must be available at build time for Next.js to inline them
-ENV NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+# 👇 accept build arguments
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SOCKET_URL
+
+# 👇 expose them to Next.js build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
 
 RUN npm run build
 

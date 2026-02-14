@@ -89,9 +89,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost/api
+    args:
+      NEXT_PUBLIC_API_URL: /api
+      NEXT_PUBLIC_SOCKET_URL: /socket.io  
 
   nginx:
     image: nginx:alpine

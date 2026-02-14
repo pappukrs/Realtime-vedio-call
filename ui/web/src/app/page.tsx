@@ -49,7 +49,7 @@ export default function Home() {
   const handleCreateMeeting = async () => {
     setIsCreating(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
       const response = await axios.post(`${apiUrl}/rooms`);
 
       if (response.data && response.data.roomId) {
