@@ -1,10 +1,10 @@
-# 🎥 Real-Time Multi-Party Video Calling System
+# Real-Time Multi-Party Video Calling System
 
 A professional-grade, microservices-based video conferencing platform built with **Next.js**, **Mediasoup (SFU)**, and **Socket.io**. This project demonstrates a scalable architecture for handling high-quality, low-latency media streams with production-grade observability.
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 The system is built on a distributed microservices model to ensure scalability and separation of concerns.
 
@@ -77,26 +77,26 @@ sequenceDiagram
 
 ## 🛠️ Advanced Features
 
-### 📊 Observability Stack
+### Observability Stack
 The project includes a full monitoring and discovery suite:
 - **Consul**: Automated service discovery and health checks.
 - **Prometheus**: Real-time metrics collection from all microservices.
 - **Grafana**: Pre-configured dashboards for monitoring system health and traffic.
 
-### 📝 Ephemeral Logging System
+### Ephemeral Logging System
 - **Structured Logging**: A custom `BackendLogger` in the `common` library provides JSON-structured logs with timestamps and session tracking.
 - **Named Volumes**: Logs are stored in a Docker Named Volume (`backend_logs`) that is automatically cleaned up with `docker compose down -v`.
 - **Log Viewer**: Access all backend logs in real-time via the browser at:  
-  👉 **[http://localhost:9000](http://localhost:9000)**
+  **[http://localhost:9000](http://localhost:9000)**
 
-### 🎨 Premium UI Overhaul
+###  Premium UI Overhaul
 - **Modern Aesthetics**: Dark-themed UI with advanced glassmorphism and smooth animations.
 - **Custom Design System**: Refined typography, standardized icon sets (`w-6 h-6`), and polished interaction states.
 - **Real-time Chat**: Fully integrated dark-themed chat with private messaging support.
 
 ---
 
-## 🚀 Development Progress
+##  Development Progress
 
 ### **Completed Foundations (Phase 1 & 2)**
 - [x] **gRPC Migration**: Internal service communication for low-latency negotiation.
